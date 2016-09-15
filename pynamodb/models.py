@@ -619,6 +619,7 @@ class Model(AttributeContainer):
             conditional_operator=conditional_operator
         )
 
+        cls._throttle.throttle()
         data = cls._get_connection().query(hash_key, **query_kwargs)
         cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
 
@@ -634,6 +635,7 @@ class Model(AttributeContainer):
         while last_evaluated_key:
             query_kwargs['exclusive_start_key'] = last_evaluated_key
             log.debug("Fetching query page with exclusive start key: %s", last_evaluated_key)
+            cls._throttle.throttle()
             data = cls._get_connection().query(hash_key, **query_kwargs)
             cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
             for item in data.get(ITEMS):
@@ -738,6 +740,7 @@ class Model(AttributeContainer):
         if page_size is None:
             page_size = limit
 
+        cls._throttle.throttle()
         data = cls._get_connection().scan(
             exclusive_start_key=last_evaluated_key,
             segment=segment,
@@ -746,9 +749,9 @@ class Model(AttributeContainer):
             total_segments=total_segments,
             conditional_operator=conditional_operator
         )
+        cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
         log.debug("Fetching first scan page")
         last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
-        cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
         for item in data.get(ITEMS):
             yield cls.from_raw_data(item)
             if limit is not None:
@@ -757,6 +760,7 @@ class Model(AttributeContainer):
                     return
         while last_evaluated_key:
             log.debug("Fetching scan page with exclusive start key: %s", last_evaluated_key)
+            cls._throttle.throttle()
             data = cls._get_connection().scan(
                 exclusive_start_key=last_evaluated_key,
                 limit=page_size,
@@ -765,13 +769,13 @@ class Model(AttributeContainer):
                 total_segments=total_segments,
                 conditional_operator=conditional_operator
             )
+            cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
             for item in data.get(ITEMS):
                 yield cls.from_raw_data(item)
                 if limit is not None:
                     limit -= 1
                     if not limit:
                         return
-
             last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
 
     @classmethod
