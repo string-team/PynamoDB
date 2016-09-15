@@ -4,7 +4,9 @@ PynamoDB attributes
 import six
 import json
 from base64 import b64encode, b64decode
-from delorean import Delorean, parse
+
+import dateutil
+
 from pynamodb.constants import (
     STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
     DEFAULT_ENCODING
@@ -249,11 +251,11 @@ class UTCDateTimeAttribute(Attribute):
         """
         Takes a datetime object and returns a string
         """
-        fmt = Delorean(value, timezone=UTC).datetime.strftime(DATETIME_FORMAT)
+        fmt = value.replace(tzinfo=dateutil.tz.tz.tzutc()).strftime(DATETIME_FORMAT)
         return six.u(fmt)
 
     def deserialize(self, value):
         """
         Takes a UTC datetime string and returns a datetime object
         """
-        return parse(value, dayfirst=False).datetime
+        return dateutil.parser.parse(value)
