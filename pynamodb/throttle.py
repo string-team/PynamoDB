@@ -74,11 +74,18 @@ class Throttle(ThrottleBase):
         """
         if not len(self.records) >= 2:
             return
-        throughput = sum([value['record'] for value in self.records]) / float(time.time() - self.records[0]['time'])
+        units = sum([
+            value['record'] if isinstance(value['record'], float) else value['record']['CapacityUnits']
+            for value in self.records
+        ])
+        time_delta = float(time.time() - self.records[0]['time'])
+        throughput = units / time_delta
 
         # Over capacity
         if throughput > self.capacity:
-            self.sleep_interval *= 2
+            log.info("Throughput exceeded, throughput:{} capacity:{}"
+                     .format(throughput, self.capacity))
+            self.sleep_interval += 1.0
         # Under capacity
         elif throughput < (.9 * self.capacity) and self.sleep_interval > 0.1:
             self.sleep_interval -= self.sleep_interval * .10
