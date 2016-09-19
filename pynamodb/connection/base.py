@@ -341,7 +341,10 @@ class Connection(object):
                     else:
                         # We use fully-jittered exponentially-backed-off retries:
                         #  https://www.awsarchitectureblog.com/2015/03/backoff.html
-                        sleep_time_ms = random.randint(0, self._base_backoff_ms * (2 ** i))
+                        sleep_time_ms = random.randint(
+                            self._base_backoff_ms * attempt_number,
+                            self._base_backoff_ms * (2 ** attempt_number)
+                        )
                         log.debug(
                             'Retry with backoff needed for (%s) after attempt %s,'
                             'sleeping for %s milliseconds, retryable %s caught: %s',
