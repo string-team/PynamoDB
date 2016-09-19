@@ -41,8 +41,8 @@ BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 
 # retry parameters
 DEFAULT_TIMEOUT = 60  # matches legacy retry timeout from botocore
-DEFAULT_MAX_RETRY_ATTEMPTS_EXCEPTION = 3
-DEFAULT_BASE_BACKOFF_MS = 25
+DEFAULT_MAX_RETRY_ATTEMPTS_EXCEPTION = 6
+DEFAULT_BASE_BACKOFF_MS = 1000
 
 log = logging.getLogger(__name__)
 log.addHandler(NullHandler())
@@ -301,15 +301,13 @@ class Connection(object):
                     if is_last_attempt_for_exceptions:
                         log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
                         raise
-                    elif response.status_code < 500:
-                        # We don't retry on a ConditionalCheckFailedException or other 4xx because we assume they will
-                        # fail in perpetuity. Retrying when there is already contention could cause other problems
-                        # in part due to unnecessary consumption of throughput.
-                        raise
                     else:
                         # We use fully-jittered exponentially-backed-off retries:
                         #  https://www.awsarchitectureblog.com/2015/03/backoff.html
-                        sleep_time_ms = random.randint(0, self._base_backoff_ms * (2 ** attempt_number))
+                        sleep_time_ms = random.randint(
+                            self._base_backoff_ms * attempt_number,
+                            self._base_backoff_ms * (2 ** attempt_number)
+                        )
                         log.debug(
                             'Retry with backoff needed for (%s) after attempt %s,'
                             'sleeping for %s milliseconds, retryable %s caught: %s',
